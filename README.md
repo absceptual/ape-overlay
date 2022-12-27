@@ -7,6 +7,7 @@ An external overlay that utilizes DirectX 11; made as a project to learn DirectX
   - Fix wndproc handler on wm_quit and other shit
   - Make viewport update dynamically depending on where the overlay is positioned
   	- Dynamically make first viewport based on overlay 
+  - Fix renderer not drawing multiple objects
   - Add checks to render_list to differenitate between primitives that require sets of vertices or just a standalone vertex
 	- Figure out how to use index buffer for efficiency when rendering
   - Find a faster method to get shader bytecode	
