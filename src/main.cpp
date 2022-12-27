@@ -1,11 +1,12 @@
 
 #include "window/window.h"
 #include "renderer/renderer.h"
+#include "util/process.h"
 
 int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
 	// Overlay initalization and attachment
-	auto overlay = window(800, 600, L"balls!", instance);
+	auto overlay = window(L"notepad.exe", instance);
 
 
 	renderer* doggy = nullptr;

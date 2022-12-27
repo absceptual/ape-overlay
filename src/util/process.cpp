@@ -1,7 +1,6 @@
 #include "process.h"
 
-
-inline std::uint32_t process::get_id(const wchar_t* name)
+std::uint32_t process::get_id(const wchar_t* name)
 {
     using query_t = NTSTATUS(WINAPI*)(SYSTEM_INFORMATION_CLASS, void*, ULONG, ULONG*);
     auto query_information{ reinterpret_cast<query_t>(GetProcAddress(GetModuleHandle(L"ntdll.dll"), "NtQuerySystemInformation")) };

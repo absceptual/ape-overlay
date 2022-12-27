@@ -24,15 +24,15 @@
     <ClCompile Include="src\renderer\renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\util\process.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\window\window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\renderer\renderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\util\process.cpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\util\process.h">
@@ -42,5 +42,9 @@
   <ItemGroup>
     <FxCompile Include="src\renderer\vertex.hlsl" />
     <FxCompile Include="src\renderer\pixel.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitattributes" />
+    <None Include=".gitignore" />
   </ItemGroup>
 </Project>

@@ -2,7 +2,7 @@
 
 
 // TODO: Make the overlay transparent and research what flags cause detections
-window::window(const int width, const int height, const wchar_t* title, HINSTANCE instance) : m_width{ width }, m_height{ height }
+window::window(const wchar_t* process, HINSTANCE instance)
 {
 	WNDCLASS wndclass{ };
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
@@ -11,17 +11,29 @@ window::window(const int width, const int height, const wchar_t* title, HINSTANC
 	wndclass.hInstance = instance;
 	RegisterClass(&wndclass);
 
+	if (!attach(process))
+		throw std::runtime_error("Failed to find target process window!");
+
+	// Gets the target window size and position
+	RECT area{ };
+	GetWindowRect(m_target, &area);
+	
+	const int width = area.right - area.left;
+	const int height = area.bottom - area.top;
+
+	POINT position{ };
+	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
 	// Find an alternative to TOPMOST/TRANSPARENT/LAYERED
 	// Initally creates a window larger than 1920x1080 (to get past anticheats checking for exact overlay sizes)
 	m_handle = CreateWindowEx(
 		WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED,
 		wndclass.lpszClassName,
-		title,
+		L"extreme cock and ball simulator",
 		 WS_POPUP | WS_VISIBLE,
-		0 - WIDTH_OFFSET, 
-		0 + HEIGHT_OFFSET,
-		WINDOW_WIDTH + WIDTH_OFFSET,
-		WINDOW_HEIGHT + HEIGHT_OFFSET,
+		position.x - WIDTH_OFFSET, 
+		position.y + HEIGHT_OFFSET,
+		width + WIDTH_OFFSET,
+		width + HEIGHT_OFFSET,
 		NULL,
 		NULL,
 		instance,
@@ -30,7 +42,8 @@ window::window(const int width, const int height, const wchar_t* title, HINSTANC
 
 	if (m_handle == INVALID_HANDLE_VALUE)
 		throw std::runtime_error("Failed to create window");
-
+	
+	
 	// Used to make our overlay visible
 	SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
 	{
@@ -86,18 +99,26 @@ bool window::attach(const wchar_t* process)
 	if (!target_pid)
 		return false;
 
-	auto enumerator = [this](HWND hwnd, LPARAM pid) -> BOOL {
-		DWORD window_pid{ };
-		GetWindowThreadProcessId(hwnd, &window_pid);
-
-		if (window_pid != pid)
-			return TRUE;
-
-		m_target = hwnd;
-		return FALSE;
+	struct lambda_info
+	{
+		void* _this;
+		DWORD target_pid;
 	};
 
-	return EnumWindows(reinterpret_cast<WNDENUMPROC>(&enumerator), target_pid);
+	lambda_info info{ this, target_pid };
+
+	return !EnumWindows([](HWND hwnd, LPARAM info) -> BOOL {
+		DWORD window_pid{ };
+		lambda_info* linfo = reinterpret_cast<lambda_info*>(info);
+
+		GetWindowThreadProcessId(hwnd, &window_pid);
+
+		if (window_pid != linfo->target_pid)
+			return TRUE;
+
+		reinterpret_cast<window*>(linfo->_this)->m_target = hwnd;
+		return FALSE;
+	}, reinterpret_cast<LPARAM>(&info));
 }
 
 
