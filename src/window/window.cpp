@@ -80,7 +80,25 @@ bool window::handler(window& window, MSG& message)
 	return message.message == WM_QUIT;
 }
 
+bool window::attach(const wchar_t* process)
+{
+	std::uint32_t target_pid = process::get_id(process);
+	if (!target_pid)
+		return false;
 
+	auto enumerator = [this](HWND hwnd, LPARAM pid) -> BOOL {
+		DWORD window_pid{ };
+		GetWindowThreadProcessId(hwnd, &window_pid);
+
+		if (window_pid != pid)
+			return TRUE;
+
+		m_target = hwnd;
+		return FALSE;
+	};
+
+	return EnumWindows(reinterpret_cast<WNDENUMPROC>(&enumerator), target_pid);
+}
 
 
 HWND window::get_hwnd() 

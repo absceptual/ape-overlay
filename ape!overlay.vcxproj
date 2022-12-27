@@ -24,6 +24,8 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\util\process.h" />
+    <ClInclude Include="src\util\process.cpp" />
     <ClInclude Include="src\window\window.h" />
     <ClInclude Include="src\renderer\renderer.h" />
   </ItemGroup>
