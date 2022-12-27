@@ -1,38 +1,31 @@
-#include <iostream>
 
 #include "window/window.h"
 #include "renderer/renderer.h"
 
-auto WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count) -> int
+int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
-	// Initalize our overlay, setup D3D11 and then process extra data
-	auto overlay = window(800, 600, L"balls!");
+	// Overlay initalization and attachment
+	auto overlay = window(800, 600, L"balls!", instance);
+
+
 	renderer* doggy = nullptr;
 	try
 	{
 		doggy = new renderer(overlay);
 	}
-	catch (std::runtime_error e)
+	catch (std::runtime_error exception)
 	{
-		std::cout << e.what();
+		
 	}
 
 	MSG message{ };
 	while (true)
 	{
-		if (PeekMessage(&message, overlay.get_hwnd(), NULL, NULL, PM_REMOVE))
-		{
-			TranslateMessage(&message);
-			DispatchMessage(&message);
-
-			if (message.message == WM_QUIT)
-				break;
-		}
+		
 
 		doggy->update(overlay);
 		if (doggy->begin())
 		{
-			// fix drawing
 			doggy->draw_line({ 0, 0 }, { 800, 0 }, { 255, 0, 0 }, 5.0f);
 			doggy->draw_box({ 250, 250 }, 200, 200, { 0, 255, 0 }, 3.0f);
 			doggy->end();

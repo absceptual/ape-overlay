@@ -197,6 +197,9 @@ auto renderer::end() -> void
 	std::memcpy(resource.pData, m_renderlist.get()->m_vertices.data(), count * sizeof(renderer::vertex));
 	m_ctx->Unmap(m_vbuffer, 0);
 
+	const FLOAT color[]{ 0.f, 0.f, 0.f, 0.0f };
+	m_ctx->ClearRenderTargetView(m_target, color);
+
 	size_t position = 0;
 	for (const auto& batch : m_renderlist.get()->m_batches)
 	{
@@ -207,6 +210,8 @@ auto renderer::end() -> void
 		//m_ctx->DrawIndexed(batch.count, 0, 0);
 	}
 
+	
+
 	m_swapchain->Present(1, 0);
 	m_renderlist.get()->clear();
 }
@@ -216,9 +221,6 @@ auto renderer::update(window& overlay) -> void
 {
 	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, 800.f, 600.0f);
 	m_ctx->RSSetViewports(1, &viewport);
-
-	const FLOAT color[]{ 0.25f, 0.5f, 1.0f, 1.0f };
-	m_ctx->ClearRenderTargetView(m_target, color);
 }
 
 // Getters & drawing functions
