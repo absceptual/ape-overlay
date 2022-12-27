@@ -39,7 +39,7 @@ D3D11_VIEWPORT m_viewport{ NULL };
 // Helper class for batch rendering
 std::unique_ptr<render_list> m_renderlist;
 ```
-###How does the render list work (for future me, when I am unable to read my own code)
+### How does the render list work (for future me, when I am unable to read my own code)
 
 Instead of rendering at different points in time, we render all the vertices at once in the renderer::end method
 The batch and vertex vectors are synced, atleast in the theory. 
