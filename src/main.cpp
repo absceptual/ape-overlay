@@ -32,7 +32,8 @@ auto WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count) -> int
 		doggy->update(overlay);
 		if (doggy->begin())
 		{
-			//doggy->draw_line({ 0, 0 }, { 800, 0 }, { 255, 0, 0 }, 5.0f);
+			// fix drawing
+			doggy->draw_line({ 0, 0 }, { 800, 0 }, { 255, 0, 0 }, 5.0f);
 			doggy->draw_box({ 250, 250 }, 200, 200, { 0, 255, 0 }, 3.0f);
 			doggy->end();
 		}
