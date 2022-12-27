@@ -3,16 +3,15 @@ An external overlay that utilizes DirectX 11; made as a project to learn DirectX
 
 
 ## TODO
-  - Make viewport update dynamically depending on where the overlay is positioned (wayyyy later)
-	- Figure out how to use index buffer for efficiency
-	- Find a faster method to get shader bytecode
-  - Add checks to render_list to differenitate between primitives that require sets of vertices or just a standalone vertex
-	- Add projection matrix so we can use our vertex shader to take screen coordinates instead of gay, confined Direct3D coordinates
-	- Dynamically make first viewport based on overlay
-  - Fix rotation for line thickness
   - Make the overlay *actually* an overlay
-	- Fix wndproc handler on wm_quit and other shit
-  - cleanup codebase
+  - Fix wndproc handler on wm_quit and other shit
+  - Make viewport update dynamically depending on where the overlay is positioned
+  	- Dynamically make first viewport based on overlay 
+  - Add checks to render_list to differenitate between primitives that require sets of vertices or just a standalone vertex
+	- Figure out how to use index buffer for efficiency when rendering
+  - Find a faster method to get shader bytecode	
+  - Fix rotation for line thickness
+  - Cleanup codebase
   
 ## Notes
 
