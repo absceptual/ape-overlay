@@ -16,24 +16,29 @@ window::window(const wchar_t* process, HINSTANCE instance)
 
 	// Gets the target window size and position
 	RECT area{ };
-	GetWindowRect(m_target, &area);
+	GetClientRect(m_target, &area);
 	
-	const int width = area.right - area.left;
-	const int height = area.bottom - area.top;
-
 	POINT position{ };
 	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
-	// Find an alternative to TOPMOST/TRANSPARENT/LAYERED
-	// Initally creates a window larger than 1920x1080 (to get past anticheats checking for exact overlay sizes)
+
+	m_width = area.right - area.left;
+	m_height = area.bottom - area.top;
+	
+	int window_width = m_width + WIDTH_OFFSET;
+	int window_height = m_height + HEIGHT_OFFSET;
+
+	m_drawing_xoffset = window_width - m_width;
+	m_drawing_yoffset = window_height - m_height;
+
 	m_handle = CreateWindowEx(
-		WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED,
+		WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED, // find ways to recreate these flags safely
 		wndclass.lpszClassName,
-		L"extreme cock and ball simulator",
-		 WS_POPUP | WS_VISIBLE,
+		L"ape!",
+		WS_POPUP | WS_VISIBLE,
 		position.x - WIDTH_OFFSET, 
-		position.y + HEIGHT_OFFSET,
-		width + WIDTH_OFFSET,
-		width + HEIGHT_OFFSET,
+		position.y - HEIGHT_OFFSET,
+		window_width,
+		window_height,
 		NULL,
 		NULL,
 		instance,
@@ -42,7 +47,6 @@ window::window(const wchar_t* process, HINSTANCE instance)
 
 	if (m_handle == INVALID_HANDLE_VALUE)
 		throw std::runtime_error("Failed to create window");
-	
 	
 	// Used to make our overlay visible
 	SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);

@@ -1,6 +1,6 @@
 #include "renderer.h"
 
-renderer::renderer(window& overlay)
+renderer::renderer(window& overlay) : m_overlay{ overlay } 
 {
 	if (!create_device(overlay))
 		throw std::runtime_error("Failed to create DirectX device!");
@@ -15,11 +15,11 @@ renderer::renderer(window& overlay)
 		throw std::runtime_error("Failed to create the vertex and/or index buffers!");
 
 	m_renderlist = std::make_unique<render_list>();
+	m_overlay = overlay;
 }
 
 renderer::~renderer()
 {
-	
 	safe_release(m_pshader);
 	safe_release(m_vshader);
 	safe_release(m_ibuffer);
@@ -197,7 +197,7 @@ auto renderer::end() -> void
 	std::memcpy(resource.pData, m_renderlist.get()->m_vertices.data(), count * sizeof(renderer::vertex));
 	m_ctx->Unmap(m_vbuffer, 0);
 
-	const FLOAT color[]{ 0.f, 0.f, 0.f, 0.0f };
+	const FLOAT color[]{ 0.f, 0.f, 55.f, 0.1f };
 	m_ctx->ClearRenderTargetView(m_target, color);
 
 	size_t position = 0;
@@ -205,10 +205,11 @@ auto renderer::end() -> void
 	{
 		m_ctx->IASetPrimitiveTopology(batch.topology);
 		m_ctx->Draw(batch.count, position);
-
 		position += batch.count;
-		//m_ctx->DrawIndexed(batch.count, 0, 0);
 	}
+
+	
+
 
 	
 
@@ -219,7 +220,7 @@ auto renderer::end() -> void
 // TODO: Make viewport update dynamically
 auto renderer::update(window& overlay) -> void
 {
-	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, 800.f, 600.0f);
+	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, overlay.get_width(), overlay.get_height());
 	m_ctx->RSSetViewports(1, &viewport);
 }
 
@@ -238,10 +239,10 @@ void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thick
 	// fix rotation/angle to make perfect thickness
 
 	std::vector<renderer::vertex> vertices {
-		{ from.x, from.y + thickness, color.x, color.y, color.z},
-		{ from.x, from.y - thickness, color.x, color.y, color.z},
-		{ to.x, to.y + thickness, color.x, color.y, color.z},
-		{ to.x, to.y - thickness, color.x, color.y, color.z},
+		{ from.x + m_overlay.m_drawing_xoffset, (from.y + m_overlay.m_drawing_yoffset) + thickness, color.x, color.y, color.z},
+		{ from.x + m_overlay.m_drawing_xoffset, (from.y + m_overlay.m_drawing_yoffset) - thickness, color.x, color.y, color.z},
+		{ to.x + m_overlay.m_drawing_xoffset, (to.y + m_overlay.m_drawing_yoffset) + thickness, color.x, color.y, color.z},
+		{ to.x + m_overlay.m_drawing_xoffset, (to.y + m_overlay.m_drawing_yoffset) - thickness, color.x, color.y, color.z},
 	};
 
 	m_renderlist.get()->add_vertices(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP, vertices);

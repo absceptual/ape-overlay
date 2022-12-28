@@ -11,6 +11,9 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <DirectXColors.h>
+#include <PrimitiveBatch.h>
+#include <Effects.h>
 
 #include "../window/window.h"
 
@@ -35,6 +38,7 @@ public:
 	};
 	
 private:
+	window& m_overlay;
 
 	// Device related objects
 	ID3D11Device* m_device{ nullptr };
@@ -58,6 +62,7 @@ private:
 
 	// Helper class for batch rendering
 	std::unique_ptr<render_list> m_renderlist;
+	
 
 public:
 	renderer(window& overlay);
@@ -80,8 +85,8 @@ public:
 	static void safe_release(T object) requires Releasable<T>;
 
 	// Drawing functions
-	void draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness);
-	void draw_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness = 0.0f);
+	void draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness = 1.0f);
+	void draw_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness = 1.0f);
 	void draw_filled_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness = 0.0f);
 	void draw_point(XMFLOAT2 position, XMFLOAT3 color);
 };
