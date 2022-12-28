@@ -1,44 +1,33 @@
-#include <iostream>
 
 #include "window/window.h"
 #include "renderer/renderer.h"
+#include "util/process.h"
 
-auto WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count) -> int
+int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
-	// Initalize our overlay, setup D3D11 and then process extra data
-	auto overlay = window(800, 600, L"balls!");
-	renderer* doggy = nullptr;
-	try
-	{
-		doggy = new renderer(overlay);
+	// Overlay initalization and attachment
+	std::unique_ptr<renderer> render;
+	try {
+		render = std::make_unique<renderer>(L"notepad.exe", instance);
 	}
-	catch (std::runtime_error e)
-	{
-		std::cout << e.what();
+	catch (std::runtime_error exception) {
+		MessageBoxA(NULL, exception.what(), NULL, MB_ABORTRETRYIGNORE);
+		return -1;
 	}
+
+	process::attach(L"ConsoleApplication1.exe");
 
 	MSG message{ };
 	while (true)
 	{
-		if (PeekMessage(&message, overlay.get_hwnd(), NULL, NULL, PM_REMOVE))
-		{
-			TranslateMessage(&message);
-			DispatchMessage(&message);
+		renderer::update(render);
+		render->begin();
 
-			if (message.message == WM_QUIT)
-				break;
-		}
+		render->draw_filled_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
+		render->draw_box({ 55, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
+		render->draw_line({ 150, 0 }, {250, 0}, {255, 0, 0}, 3.0f);
 
-		doggy->update(overlay);
-		if (doggy->begin())
-		{
-			// fix drawing
-			doggy->draw_line({ 0, 0 }, { 800, 0 }, { 255, 0, 0 }, 5.0f);
-			doggy->draw_box({ 250, 250 }, 200, 200, { 0, 255, 0 }, 3.0f);
-			doggy->end();
-		}
+		render->end();
 	}
-
-	delete doggy;
 	return 0;
 }
