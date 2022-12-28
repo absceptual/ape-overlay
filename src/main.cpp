@@ -6,35 +6,25 @@
 int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
 	// Overlay initalization and attachment
-	auto overlay = window(L"EpicGamesLauncher.exe", instance);
-
-
-	renderer* doggy = nullptr;
-	try
-	{
-		doggy = new renderer(overlay);
+	std::unique_ptr<renderer> render;
+	try {
+		render = std::make_unique<renderer>(L"notepad.exe", instance);
 	}
-	catch (std::runtime_error exception)
-	{
-		
+	catch (std::runtime_error exception) {
+		MessageBoxA(NULL, exception.what(), NULL, MB_ABORTRETRYIGNORE);
+		return -1;
 	}
 
 	MSG message{ };
 	while (true)
 	{
-		
+		render->update();
+		render->begin();
 
-		doggy->update(overlay);
-		if (doggy->begin())
-		{
-			 doggy->draw_line({ 0, 0 }, { 500, 500 }, { 0, 255, 0 });
-			// doggy->draw_line({ 300, 100 }, { 400, 200 }, { 255, 0, 0 }, 3.0f);
-
-			// doggy->draw_box({ 500, 500 }, 50, 50, { 0, 255, 0 }, 2.0f);
-			doggy->end();
-		}
+		render->draw_filled_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
+		render->draw_box({ 55, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
+		render->draw_line({ 150, 0 }, {250, 0}, {255, 0, 0}, 3.0f);
+		render->end();
 	}
-
-	delete doggy;
 	return 0;
 }

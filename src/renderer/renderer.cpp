@@ -1,8 +1,15 @@
 #include "renderer.h"
 
-renderer::renderer(window& overlay) : m_overlay{ overlay } 
+renderer::renderer(const wchar_t* process, HINSTANCE instance) 
 {
-	if (!create_device(overlay))
+	try {
+		m_overlay = std::make_unique<window>(process, instance);
+	}
+	catch (std::runtime_error exception) {
+		throw exception;
+	}
+
+	if (!create_device())
 		throw std::runtime_error("Failed to create DirectX device!");
 
 	if (!create_target())
@@ -13,9 +20,6 @@ renderer::renderer(window& overlay) : m_overlay{ overlay }
 
 	if (!create_buffer())
 		throw std::runtime_error("Failed to create the vertex and/or index buffers!");
-
-	m_renderlist = std::make_unique<render_list>();
-	m_overlay = overlay;
 }
 
 renderer::~renderer()
@@ -31,16 +35,13 @@ renderer::~renderer()
 	safe_release(m_device);
 }
 
-// Functions responsible for device, target, buffer and shader setup
-
-// todo: dynamically make first viewport based on overlay
-bool renderer::create_device(window& overlay)
+bool renderer::create_device()
 {
 	DXGI_SWAP_CHAIN_DESC chain_descriptor{ NULL };
 	chain_descriptor.BufferCount = 1;
 	chain_descriptor.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	chain_descriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	chain_descriptor.OutputWindow = overlay.get_hwnd();
+	chain_descriptor.OutputWindow = m_overlay->get_hwnd();
 	chain_descriptor.SampleDesc.Count = 1;
 	chain_descriptor.Windowed = true;
 
@@ -62,9 +63,8 @@ bool renderer::create_device(window& overlay)
 	if (FAILED(status))
 		return false;
 
-	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, 800.f, 600.0f);
+	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, m_overlay->get_width(), m_overlay->get_height());
 	m_ctx->RSSetViewports(1, &viewport);
-
 
 	return true;
 }
@@ -88,6 +88,7 @@ bool renderer::create_target()
 // TODO: Fix index buffer not working & dynamically create viewport from overlay
 bool renderer::create_buffer()
 {
+	/*
 	D3D11_BUFFER_DESC vertex_descriptor{ NULL };
 	vertex_descriptor.ByteWidth = sizeof(renderer::vertex) * static_cast<UINT>(MAX_VERTICES);
 	vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -107,12 +108,13 @@ bool renderer::create_buffer()
 	if (FAILED(result))
 		return false;
 
+	*/
+
 	D3D11_VIEWPORT viewport{};
 	UINT count = 1;
 	m_ctx->RSGetViewports(&count, &viewport);
 
-	m_projection = XMMatrixOrthographicOffCenterLH(viewport.TopLeftX, viewport.Width, viewport.Height, viewport.TopLeftY,
-		viewport.MinDepth, viewport.MaxDepth);
+	m_projection = XMMatrixOrthographicOffCenterLH(viewport.TopLeftX, viewport.Width, viewport.Height, viewport.TopLeftY, viewport.MinDepth, viewport.MaxDepth);
 
 	D3D11_BUFFER_DESC matrix_descriptor{ NULL };
 	matrix_descriptor.Usage = D3D11_USAGE_DYNAMIC;
@@ -121,21 +123,27 @@ bool renderer::create_buffer()
 	matrix_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	matrix_descriptor.MiscFlags = 0;
 
-	result = m_device->CreateBuffer(&matrix_descriptor, nullptr, &m_projectionbuffer);
+	auto result = m_device->CreateBuffer(&matrix_descriptor, nullptr, &m_projectionbuffer);
 	if (FAILED(result))
 		return false;
 
 	D3D11_MAPPED_SUBRESOURCE resource;
 	m_ctx->Map(m_projectionbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
 	std::memcpy(resource.pData, &m_projection, sizeof(XMMATRIX));
-	m_ctx->Unmap(m_projectionbuffer, 0);
+ 	m_ctx->Unmap(m_projectionbuffer, 0);
 	
+
 	return true;
 }
 
 // TODO: Find a faster method to get shader bytecode
+
+// Initalizes BasicEffect, PrimitiveBatch and our vertex/pixel shaders
 bool renderer::create_shaders()
 {
+	m_effect = std::make_unique<BasicEffect>(m_device);
+	m_effect->SetVertexColorEnabled(true);
+
 	std::ifstream vshader{ "vertex.cso", std::ios::binary };
 	if (!vshader)
 		return false;
@@ -144,6 +152,7 @@ bool renderer::create_shaders()
 	if (!pshader)
 		return false;
 
+	// m_effect->GetVertexShaderBytecode()
 	std::vector<char> v_bytecode{ std::istreambuf_iterator<char>(vshader), std::istreambuf_iterator<char>() };
 	std::vector<char> p_bytecode{ std::istreambuf_iterator<char>(pshader), std::istreambuf_iterator<char>() };
 
@@ -156,30 +165,44 @@ bool renderer::create_shaders()
 		return false;
 
 	// Create input layouts to tell Direct3D how our data is laid out in memory
-	D3D11_INPUT_ELEMENT_DESC layout[]
+	static const D3D11_INPUT_ELEMENT_DESC layout[]
 	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 
-	m_device->CreateInputLayout(layout, 2, v_bytecode.data(), v_bytecode.size(), &m_layout);
+	CreateInputLayoutFromEffect<renderer::vertex_t>(m_device, m_effect.get(), &m_layout);
+
+	m_pbatch = std::make_unique<PrimitiveBatch<vertex_t>>(m_ctx);
+
+	m_effect->SetProjection(m_projection);
+	m_effect->SetVertexColorEnabled(true);
+
+	// m_device->CreateInputLayout(layout, 2, v_bytecode.data(), v_bytecode.size(), &m_layout);
 	return true;
 }
 
 auto renderer::begin() -> bool
 {
-	const UINT stride = sizeof(renderer::vertex);
-	const UINT offset = 0;
+	//const UINT stride = sizeof(renderer::vertex);
+	//const UINT offset = 0;
 
 	m_ctx->OMSetRenderTargets(1, &m_target, nullptr);
+
+	m_effect->Apply(m_ctx);
 	m_ctx->VSSetConstantBuffers(0, 1, &m_projectionbuffer);
+
 
 	m_ctx->IASetInputLayout(m_layout);
 	m_ctx->VSSetShader(m_vshader, nullptr, NULL);
 	m_ctx->PSSetShader(m_pshader, nullptr, NULL);
 
-	m_ctx->IASetVertexBuffers(0, 1, &m_vbuffer, &stride, &offset);
-	m_ctx->IASetIndexBuffer(m_ibuffer, DXGI_FORMAT_R32_UINT, 0);
+	const FLOAT color[]{ 0.f, 0.f, 55.f, 0.1f };
+	// m_ctx->ClearRenderTargetView(m_target, color);
+
+	m_pbatch->Begin();
+	// m_ctx->IASetVertexBuffers(0, 1, &m_vbuffer, &stride, &offset);
+	// m_ctx->IASetIndexBuffer(m_ibuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	return true;
 }
@@ -188,6 +211,7 @@ auto renderer::begin() -> bool
 auto renderer::end() -> void
 {
 	// Copy our vertices from our render list into our vertex buffer (using ID3D11DeviceContext::Map)
+	/*
 	auto count = m_renderlist.get()->m_vertices.size();
 	if (!count)
 		return;
@@ -197,8 +221,7 @@ auto renderer::end() -> void
 	std::memcpy(resource.pData, m_renderlist.get()->m_vertices.data(), count * sizeof(renderer::vertex));
 	m_ctx->Unmap(m_vbuffer, 0);
 
-	const FLOAT color[]{ 0.f, 0.f, 55.f, 0.1f };
-	m_ctx->ClearRenderTargetView(m_target, color);
+	
 
 	size_t position = 0;
 	for (const auto& batch : m_renderlist.get()->m_batches)
@@ -207,21 +230,20 @@ auto renderer::end() -> void
 		m_ctx->Draw(batch.count, position);
 		position += batch.count;
 	}
-
+	*/
 	
 
-
-	
-
+	// m_pbatch->DrawLine(vertex_t(XMFLOAT3(100.f, 100.f, 0.f), XMFLOAT4(255.f, 0.f, 0.f, 1.f)), vertex_t(XMFLOAT3(500.f, 500.f, 0.f), XMFLOAT4(255.f, 0.f, 0.f, 1.f)));
+	m_pbatch->End();
 	m_swapchain->Present(1, 0);
-	m_renderlist.get()->clear();
 }
 
 // TODO: Make viewport update dynamically
-auto renderer::update(window& overlay) -> void
+auto renderer::update() -> void
 {
-	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, overlay.get_width(), overlay.get_height());
-	m_ctx->RSSetViewports(1, &viewport);
+	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, m_overlay->get_width(), m_overlay->get_height());
+	
+	// redundant m_ctx->RSSetViewports(1, &viewport);
 }
 
 // Getters & drawing functions
@@ -234,31 +256,48 @@ ID3D11DeviceContext* renderer::get_context()
 	return m_ctx; 
 }
 
-void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness)
+void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness = 1.0f)
 {
-	// fix rotation/angle to make perfect thickness
+	/// fix rotation / angle to make perfect thickness 
+	from.x += WIDTH_OFFSET;
+	to.x += WIDTH_OFFSET;
 
-	std::vector<renderer::vertex> vertices {
-		{ from.x + m_overlay.m_drawing_xoffset, (from.y + m_overlay.m_drawing_yoffset) + thickness, color.x, color.y, color.z},
-		{ from.x + m_overlay.m_drawing_xoffset, (from.y + m_overlay.m_drawing_yoffset) - thickness, color.x, color.y, color.z},
-		{ to.x + m_overlay.m_drawing_xoffset, (to.y + m_overlay.m_drawing_yoffset) + thickness, color.x, color.y, color.z},
-		{ to.x + m_overlay.m_drawing_xoffset, (to.y + m_overlay.m_drawing_yoffset) - thickness, color.x, color.y, color.z},
-	};
+	from.y += HEIGHT_OFFSET;
+	to.y += HEIGHT_OFFSET;
 
-	m_renderlist.get()->add_vertices(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP, vertices);
+	vertex_t q1 = vertex_t(XMFLOAT3(from.x, from.y + thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q2 = vertex_t(XMFLOAT3(from.x, from.y - thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q3 = vertex_t(XMFLOAT3(to.x, to.y + thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q4 = vertex_t(XMFLOAT3(to.x, to.y - thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+
+	m_pbatch->DrawQuad(q2, q4, q3, q1);
 }
 
 void renderer::draw_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness)
 {
-	draw_line({ position.x, position.y }, { position.x + width, position.y }, color, thickness);
-	// draw_line({ position.x + width, position.y }, { position.x + width, position.y + height }, color, thickness);
-	draw_line({ position.x + width, position.y + height }, { position.x, position.y + height }, color, thickness);
-	// draw_line({ position.x, position.y + height }, { position.x, position.y }, color, thickness);
+	position.x += WIDTH_OFFSET;
+	position.y += HEIGHT_OFFSET;
+
+	vertex_t q1 = vertex_t(XMFLOAT3(position.x, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q2 = vertex_t(XMFLOAT3(position.x + width, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q3 = vertex_t(XMFLOAT3(position.x + width, position.y + height, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q4 = vertex_t(XMFLOAT3(position.x, position.y + height, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	m_pbatch->DrawLine(q1, q2);
+	m_pbatch->DrawLine(q2, q3);
+	m_pbatch->DrawLine(q3, q4);
+	m_pbatch->DrawLine(q4, q1);
 }
 
 void renderer::draw_filled_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness)
 {
+	position.x += WIDTH_OFFSET;
+	position.y += HEIGHT_OFFSET;
 
+	vertex_t q1 = vertex_t(XMFLOAT3(position.x, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q2 = vertex_t(XMFLOAT3(position.x + width, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q3 = vertex_t(XMFLOAT3(position.x + width, position.y + height, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	vertex_t q4 = vertex_t(XMFLOAT3(position.x, position.y + height, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
+	m_pbatch->DrawQuad(q1, q2, q3, q4);
 }
 
 void renderer::draw_point(XMFLOAT2 position, XMFLOAT3 color)
@@ -270,7 +309,7 @@ void renderer::draw_point(XMFLOAT2 position, XMFLOAT3 color)
 
 // renderlist functions
 
-// TODO: Add checks to differenitate between primitives that require sets of vertices or just a standalone vertexd
+/* TODO: Add checks to differenitate between primitives that require sets of vertices or just a standalone vertexd
 void render_list::add_vertex(D3D_PRIMITIVE_TOPOLOGY topology, renderer::vertex vertex)
 {
 	auto batch = render_list::batch(topology, 1);
@@ -288,3 +327,4 @@ void render_list::add_vertices(D3D_PRIMITIVE_TOPOLOGY topology, std::vector<rend
 
 	m_batches.emplace_back(batch);
 }
+*/

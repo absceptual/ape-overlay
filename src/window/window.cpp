@@ -1,7 +1,7 @@
 #include "window.h"
 
 
-// TODO: Make the overlay transparent and research what flags cause detections
+// TODO: Research what flags cause detections
 window::window(const wchar_t* process, HINSTANCE instance)
 {
 	WNDCLASS wndclass{ };
@@ -18,35 +18,36 @@ window::window(const wchar_t* process, HINSTANCE instance)
 	RECT area{ };
 	GetClientRect(m_target, &area);
 	
+	if (!area.left && !area.right && !area.bottom && !area.top)
+		throw std::runtime_error("Could not determine window size! (is it minimized?)");
+
 	POINT position{ };
 	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
+	{
+		this->m_width = area.right - area.left;
+		this->m_height = area.bottom - area.top;
 
-	m_width = area.right - area.left;
-	m_height = area.bottom - area.top;
-	
-	int window_width = m_width + WIDTH_OFFSET;
-	int window_height = m_height + HEIGHT_OFFSET;
+		int window_width = m_width + WIDTH_OFFSET;
+		int window_height = m_height + HEIGHT_OFFSET;
 
-	m_drawing_xoffset = window_width - m_width;
-	m_drawing_yoffset = window_height - m_height;
+		m_handle = CreateWindowEx(
+			WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED,
+			wndclass.lpszClassName,
+			L"ape!",
+			WS_POPUP | WS_VISIBLE,
+			position.x - WIDTH_OFFSET,
+			position.y - HEIGHT_OFFSET,
+			window_width,
+			window_height,
+			NULL,
+			NULL,
+			instance,
+			NULL
+		);
 
-	m_handle = CreateWindowEx(
-		WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED, // find ways to recreate these flags safely
-		wndclass.lpszClassName,
-		L"ape!",
-		WS_POPUP | WS_VISIBLE,
-		position.x - WIDTH_OFFSET, 
-		position.y - HEIGHT_OFFSET,
-		window_width,
-		window_height,
-		NULL,
-		NULL,
-		instance,
-		NULL
-	);
-
-	if (m_handle == INVALID_HANDLE_VALUE)
-		throw std::runtime_error("Failed to create window");
+		if (m_handle == INVALID_HANDLE_VALUE)
+			throw std::runtime_error("Failed to create window");
+	}
 	
 	// Used to make our overlay visible
 	SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
@@ -125,8 +126,3 @@ bool window::attach(const wchar_t* process)
 	}, reinterpret_cast<LPARAM>(&info));
 }
 
-
-HWND window::get_hwnd() 
-{ 
-	return m_handle; 
-}
