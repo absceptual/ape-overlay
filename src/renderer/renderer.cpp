@@ -115,7 +115,6 @@ bool renderer::create_buffer()
 }
 
 // TODO: Find a faster method to get shader bytecode
-
 // Initalizes BasicEffect, PrimitiveBatch and our vertex/pixel shaders
 bool renderer::create_shaders()
 {
@@ -156,8 +155,8 @@ auto renderer::begin() -> bool
 	m_ctx->VSSetShader(m_vshader, nullptr, NULL);
 	m_ctx->PSSetShader(m_pshader, nullptr, NULL);
 
-	const FLOAT color[]{ 0.f, 10.f, 0.f, 0.1f };
-	m_ctx->ClearRenderTargetView(m_target, color);
+	// const FLOAT color[]{ 0.f, 10.f, 0.f, 0.1f };
+	// m_ctx->ClearRenderTargetView(m_target, color);
 
 	m_pbatch->Begin();
 	return true;
@@ -189,9 +188,9 @@ void renderer::update(std::unique_ptr<renderer>& render)
 
 	auto t_position = overlay->get_position();
 	if (t_position.x != position.x || t_position.y != position.y)
-		SetWindowPos(overlay->get_hwnd(), NULL, position.x, position.y, overlay->get_width() + WIDTH_OFFSET, overlay->get_height() + HEIGHT_OFFSET, NULL);
+		SetWindowPos(overlay->get_hwnd(), NULL, position.x, position.y, 0, 0, SWP_NOSIZE);
 
-	// Check for changes in width/height every second
+	// Check for changes in width/height every half a second (could be better but lazy)
 	int width = size.right - size.left, height = size.bottom - size.top;
 	if ((width != overlay->get_width() || height != overlay->get_height()) && seconds >= 1.0f)
 	{

@@ -10,6 +10,8 @@
 constexpr int HEIGHT_OFFSET = 10;
 constexpr int WIDTH_OFFSET = 6;
 
+// implement window hijacking in future...
+// https://www.unknowncheats.me/forum/call-of-duty-modern-warfare/405077-directx-topmost-detected.html
 class window
 {
 public:
@@ -24,6 +26,7 @@ private:
 
 	int m_width             { };
 	int m_height            { };
+	int z_order				{ };
 	pixel m_position		{ };	
 
 public:
@@ -43,6 +46,8 @@ public:
 	// Sends windows messages to window::procedure
 	static bool handler(window& window, MSG& message);
 	
+	void update_z();
+
 	// Getters...
 	auto& get_hwnd()           { return m_handle; }
 	auto& get_target()         { return m_target; }

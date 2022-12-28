@@ -19,7 +19,14 @@ window::window(const wchar_t* process, HINSTANCE instance)
 	GetClientRect(m_target, &area);
 	
 	if (!area.left && !area.right && !area.bottom && !area.top)
-		throw std::runtime_error("Could not determine window size! (is it minimized?)");
+	{
+		// Attempt to unminimize window (assuming its minimized) and try again
+		ShowWindow(m_target, SW_SHOWNORMAL);
+		GetClientRect(m_target, &area);
+
+		if (!area.left && !area.right && !area.bottom && !area.top)
+			throw std::runtime_error("Could not determine window size! (is it minimized?)");
+	}
 
 	POINT position{ };
 	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
@@ -72,6 +79,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 		};
 
 		DwmExtendFrameIntoClientArea(m_handle, &margins);
+		
 	}
 
 }
@@ -127,4 +135,3 @@ bool window::attach(const wchar_t* process)
 		return FALSE;
 	}, reinterpret_cast<LPARAM>(&info));
 }
-
