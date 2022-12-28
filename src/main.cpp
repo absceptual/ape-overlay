@@ -24,6 +24,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 		render->draw_filled_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
 		render->draw_box({ 55, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
 		render->draw_line({ 150, 0 }, {250, 0}, {255, 0, 0}, 3.0f);
+
 		render->end();
 	}
 	return 0;

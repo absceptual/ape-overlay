@@ -24,6 +24,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 	POINT position{ };
 	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
 	{
+		m_position = { position.x, position.y };
 		this->m_width = area.right - area.left;
 		this->m_height = area.bottom - area.top;
 
@@ -82,7 +83,6 @@ window::handler_t window::procedure(HWND handle, UINT message, WPARAM wparam, LP
 	case WM_CLOSE:
 		PostQuitMessage(0x0);
 		return 0;
-
 	default:
 		return DefWindowProc(handle, message, wparam, lparam);
 	}
