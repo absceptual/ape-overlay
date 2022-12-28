@@ -1,5 +1,6 @@
 #pragma once
 #include <concepts>
+#include <chrono>
 #include <fstream>
 #include <vector>
 #include <memory>
@@ -35,6 +36,9 @@ class renderer
 public:
 	using vertex_t = VertexPositionColor;
 
+	HINSTANCE m_instance{ };
+	const wchar_t* m_process;
+
 private:
 	std::unique_ptr<window>					   m_overlay;
 	std::unique_ptr<PrimitiveBatch<vertex_t>>  m_pbatch;
@@ -69,12 +73,13 @@ public:
 	bool create_buffer();
 	bool create_shaders();
 
-	auto update() -> void;
+	static void update(std::unique_ptr<renderer>& render);
 	auto begin() -> bool;
 	auto end() -> void;
 
 	ID3D11Device* get_device();
 	ID3D11DeviceContext* get_context();
+	std::unique_ptr<window>& get_overlay();
 
 	template <class T>
 	static void safe_release(T object) requires Releasable<T>;

@@ -4,6 +4,8 @@ renderer::renderer(const wchar_t* process, HINSTANCE instance)
 {
 	try {
 		m_overlay = std::make_unique<window>(process, instance);
+		m_process = process;
+		m_instance = instance;
 	}
 	catch (std::runtime_error exception) {
 		throw exception;
@@ -154,8 +156,8 @@ auto renderer::begin() -> bool
 	m_ctx->VSSetShader(m_vshader, nullptr, NULL);
 	m_ctx->PSSetShader(m_pshader, nullptr, NULL);
 
-	// const FLOAT color[]{ 0.f, 0.f, 55.f, 0.1f };
-	// m_ctx->ClearRenderTargetView(m_target, color);
+	const FLOAT color[]{ 0.f, 10.f, 0.f, 0.1f };
+	m_ctx->ClearRenderTargetView(m_target, color);
 
 	m_pbatch->Begin();
 	return true;
@@ -168,33 +170,38 @@ auto renderer::end() -> void
 }
 
 // Called when window is resized in window::handler
-auto renderer::update() -> void
+void renderer::update(std::unique_ptr<renderer>& render)
 {
+	// Timing check used to prevent exceptions from creating/destroying classes too frequently
+	static auto start = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::high_resolution_clock::now() - start;
+	double seconds = std::chrono::duration<double>(elapsed).count();
+
+	std::unique_ptr<window>& overlay = render->get_overlay();
+
 	RECT size{ };
-	GetWindowRect(m_target, &size);
+	GetClientRect(overlay->get_target(), &size);
 
-	int x = size.left;
-	int y = size.right;
-	int width = size.right - size.left;
-	int height = size.top - size.left;
+	POINT position{ };
+	MapWindowPoints(overlay->get_target(), HWND_DESKTOP, &position, 1);
+	position.x -= WIDTH_OFFSET;
+	position.y -= HEIGHT_OFFSET;
 
-	auto t_position = m_overlay->get_position();
-	if (x != t_position.x || y != t_position.y || width != m_overlay->get_width() || height != m_overlay->get_height())
+	auto t_position = overlay->get_position();
+	if (t_position.x != position.x || t_position.y != position.y)
+		SetWindowPos(overlay->get_hwnd(), NULL, position.x, position.y, overlay->get_width() + WIDTH_OFFSET, overlay->get_height() + HEIGHT_OFFSET, NULL);
+
+	// Check for changes in width/height every second
+	int width = size.right - size.left, height = size.bottom - size.top;
+	if ((width != overlay->get_width() || height != overlay->get_height()) && seconds >= 1.0f)
 	{
-		m_overlay->get_width() = width;
-		m_overlay->get_height() = height;
-		m_overlay->get_position() = { x, y };
+		start = std::chrono::high_resolution_clock::now();
+		auto process = render->m_process;
+		auto instance = render->m_instance;
+		DestroyWindow(overlay->get_hwnd());
+		render.release();
 
-		m_swapchain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, NULL);
-		auto viewport = CD3D11_VIEWPORT(0.f, 0.f, width, height);
-		m_ctx->RSSetViewports(1, &viewport);
-
-		m_projection = XMMatrixOrthographicOffCenterLH(viewport.TopLeftX, viewport.Width, viewport.Height, viewport.TopLeftY, viewport.MinDepth, viewport.MaxDepth);
-
-		D3D11_MAPPED_SUBRESOURCE resource;
-		m_ctx->Map(m_projectionbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
-		std::memcpy(resource.pData, &m_projection, sizeof(XMMATRIX));
-		m_ctx->Unmap(m_projectionbuffer, 0);
+		render = std::make_unique<renderer>(process, instance);
 	}
 }
 
@@ -208,7 +215,12 @@ ID3D11DeviceContext* renderer::get_context()
 	return m_ctx; 
 }
 
-void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness = 1.0f)
+std::unique_ptr<window>& renderer::get_overlay()
+{
+	return m_overlay;
+}
+
+void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness)
 {
 	/// fix rotation / angle to make perfect thickness 
 	from.x += WIDTH_OFFSET;
@@ -252,7 +264,3 @@ void renderer::draw_filled_box(XMFLOAT2 position, float width, float height, XMF
 	m_pbatch->DrawQuad(q1, q2, q3, q4);
 }
 
-void renderer::draw_point(XMFLOAT2 position, XMFLOAT3 color)
-{
-
-}

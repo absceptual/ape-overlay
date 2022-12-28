@@ -24,7 +24,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 	POINT position{ };
 	MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
 	{
-		m_position = { position.x, position.y };
+		
 		this->m_width = area.right - area.left;
 		this->m_height = area.bottom - area.top;
 
@@ -62,6 +62,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 		POINT diff{ };
 		ClientToScreen(m_handle, &diff);
 
+		m_position = { window_area.left + (diff.x - window_area.left), window_area.top + (diff.y - window_area.top), };
 		const MARGINS margins
 		{
 			window_area.left + (diff.x - window_area.left),
@@ -72,6 +73,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 
 		DwmExtendFrameIntoClientArea(m_handle, &margins);
 	}
+
 }
 
 // TODO: Setup proper window manager

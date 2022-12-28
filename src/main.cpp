@@ -18,7 +18,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 	MSG message{ };
 	while (true)
 	{
-		render->update();
+		render->update(render);
 		render->begin();
 
 		render->draw_filled_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
