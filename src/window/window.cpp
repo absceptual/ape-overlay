@@ -1,13 +1,14 @@
 #include "window.h"
 
 
-// TODO: Research what flags cause detections
+
 window::window(const wchar_t* process, HINSTANCE instance)
 {
+
 	WNDCLASS wndclass{ };
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
 	wndclass.lpfnWndProc = window::procedure;
-	wndclass.lpszClassName = L"ape!overlay";
+	wndclass.lpszClassName = L"ape!";
 	wndclass.hInstance = instance;
 	RegisterClass(&wndclass);
 
@@ -84,6 +85,61 @@ window::window(const wchar_t* process, HINSTANCE instance)
 
 }
 
+
+// Hijacks NVIDIA Share overlay in order to draw over our target process
+window::window(const wchar_t* process)
+{
+	// Overlay has a class named CEF-OSC-WIDGET with the attributes we need
+	m_handle = FindWindow(L"CEF-OSC-WIDGET", NULL);
+	if (!m_handle)
+		throw std::runtime_error("Failed to find NVIDIA Share overlay (is it running?)");
+
+	if (!attach(process) || m_target == INVALID_HANDLE_VALUE)
+		throw std::runtime_error("Failed to find target window! (is it running?)");
+
+	// Gets the target window size and position
+	RECT area{ };
+	GetClientRect(m_target, &area);
+	{
+		if (!area.left && !area.right && !area.bottom && !area.top)
+		{
+			// Attempt to unminimize window (assuming its minimized) and try again
+			ShowWindow(m_target, SW_SHOWNORMAL);
+			GetClientRect(m_target, &area);
+
+			if (!area.left && !area.right && !area.bottom && !area.top)
+				throw std::runtime_error("Could not determine window size! (is it minimized?)");
+		}
+	}
+
+	{	
+		POINT position{ };
+		MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
+
+		m_width = area.right - area.left;
+		m_height = area.bottom - area.top;
+
+		RECT client_area{ };
+		GetClientRect(m_handle, &client_area);
+
+		RECT window_area{ };
+		GetClientRect(m_handle, &window_area);
+
+		POINT diff{ };
+		ClientToScreen(m_handle, &diff);
+
+		m_position = { window_area.left + (diff.x - window_area.left), window_area.top + (diff.y - window_area.top), };
+		
+		// MSDN states that negative margin values create a "sheet of glass" effect (no window border/solid surface)
+		MARGINS margins = { -1 };
+		DwmExtendFrameIntoClientArea(m_handle, &margins);
+
+		SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+	}
+
+}
+
+
 // TODO: Setup proper window manager
 window::handler_t window::procedure(HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
 {
@@ -121,7 +177,7 @@ bool window::attach(const wchar_t* process)
 	};
 
 	lambda_info info{ this, target_pid };
-
+	
 	return !EnumWindows([](HWND hwnd, LPARAM info) -> BOOL {
 		DWORD window_pid{ };
 		lambda_info* linfo = reinterpret_cast<lambda_info*>(info);

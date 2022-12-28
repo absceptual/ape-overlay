@@ -66,6 +66,7 @@ private:
 
 public:
 	renderer(const wchar_t* process, HINSTANCE instance);
+	renderer(const wchar_t* process);
 	~renderer();
 
 	bool create_device();

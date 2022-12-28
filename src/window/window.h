@@ -6,12 +6,9 @@
 
 #include "../util/process.h"
 
-// Change as needed
-constexpr int HEIGHT_OFFSET = 10;
-constexpr int WIDTH_OFFSET = 6;
-
-// implement window hijacking in future...
-// https://www.unknowncheats.me/forum/call-of-duty-modern-warfare/405077-directx-topmost-detected.html
+const int WIDTH_OFFSET = 5;
+const int HEIGHT_OFFSET = 6;
+// Hijacks NVIDIA Share overlay (signed application) in order to draw over our preferred game
 class window
 {
 public:
@@ -19,6 +16,7 @@ public:
 	{
 		int x, y;
 	};
+
 private:
 	using handler_t		     = LRESULT;
 	HWND m_handle           { };
@@ -30,10 +28,7 @@ private:
 	pixel m_position		{ };	
 
 public:
-	/* 
-	Responsible for dynamically finding the target window based off executable name / pid and creating an overlay
-	The overlay is slightly bigger than the target window (HEIGHT/WIDTH offset) to throw off overlay checks by anticheats
-	*/
+	window(const wchar_t* process);
 	window(const wchar_t* process, HINSTANCE instance);
 	window() = default;
 

@@ -24,6 +24,29 @@ renderer::renderer(const wchar_t* process, HINSTANCE instance)
 		throw std::runtime_error("Failed to create the vertex and/or index buffers!");
 }
 
+renderer::renderer(const wchar_t* process)
+{
+	try {
+		m_overlay = std::make_unique<window>(process);
+		m_process = process;
+	}
+	catch (std::runtime_error exception) {
+		throw exception;
+	}
+
+	if (!create_device())
+		throw std::runtime_error("Failed to create DirectX device!");
+
+	if (!create_target())
+		throw std::runtime_error("Failed to create render target!");
+
+	if (!create_shaders())
+		throw std::runtime_error("Failed to initalize render shaders!");
+
+	if (!create_buffer())
+		throw std::runtime_error("Failed to create the vertex and/or index buffers!");
+}
+
 // TODO: Add more releases	
 renderer::~renderer()
 {
