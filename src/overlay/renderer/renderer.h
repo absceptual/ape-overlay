@@ -11,19 +11,13 @@
 #include <Windows.h>
 
 // DirectX includes
-#include <d3d11.h>
-#include <d3dcompiler.h>
-#include <DirectXMath.h>
-#include <DirectXColors.h>
+#include <d2d1.h>
+#include <d2d1_1.h>
 #include <DirectXHelpers.h>
-
-#include <PrimitiveBatch.h>
-#include <Effects.h>
-#include <VertexTypes.h>
-
+#include <D2d1_1helper.h>
 #include "../window/window.h"
 
-using namespace DirectX;
+#pragma comment(lib, "d2d1.lib")
 
 template <class T>
 concept Releasable = requires(T object)
@@ -32,6 +26,30 @@ concept Releasable = requires(T object)
 	std::is_pointer<T>::value;
 };
 
+namespace renderer
+{
+	namespace objects
+	{
+		inline ID2D1Factory1* factory = nullptr;
+		inline ID2D1Device* device = nullptr;
+		inline ID2D1DeviceContext* ctx = nullptr;
+		inline ID2D1SolidColorBrush* brush = nullptr;
+		inline ID2D1HwndRenderTarget* target = nullptr;
+
+		inline ID3D11Device* d_device = nullptr;
+		inline IDXGIDevice* dxgi_device = nullptr;
+		inline IDXGISwapChain* swapchain = nullptr;
+		inline IDXGISurface* backbuffer = nullptr;
+	}
+
+	auto init( const wchar_t* name ) -> bool;
+
+	void begin( );
+	void update( );
+	void end( );
+};
+
+/*
 class renderer
 {
 public:
@@ -87,9 +105,12 @@ public:
 	void draw_filled_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness = 1.0f);
 };
 
+
 template <class T>
 void renderer::safe_release(T object) requires Releasable<T>
 {
 	if (object)
 		object->Release();
 }
+
+*/

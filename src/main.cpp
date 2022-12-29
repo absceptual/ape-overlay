@@ -1,6 +1,6 @@
 
-#include "window/window.h"
-#include "renderer/renderer.h"
+#include "overlay/window/window.h"
+#include "overlay/renderer/renderer.h"
 #include "util/process.h"
 
 #pragma comment(lib, "d3d11.lib")
@@ -10,25 +10,23 @@
 int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
 	// Overlay initalization and attachment
-	std::unique_ptr<renderer> render;
-
 	try {
-		render = std::make_unique<renderer>(L"notepad.exe");
+		renderer::init( L"notepad.exe" );
 	}
 	catch (std::runtime_error exception) {
 		MessageBoxA(NULL, exception.what(), NULL, MB_ABORTRETRYIGNORE);
 		return -1;
 	}
 
-	MSG message{ };
 	while (true)
 	{
-		renderer::update(render);
-		render->begin();
+		renderer::begin( );
 
-		render->draw_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);
+		auto x_offset = overlay::window::position.x;
+		auto y_offset = overlay::window::position.y;
+		renderer::objects::ctx->DrawRectangle(D2D1::RectF( x_offset + 100.0f, y_offset + 100.0f, x_offset + 300.f, y_offset + 300.f ), renderer::objects::brush);
 		
-		render->end();
+		renderer::end( );
 	}
 	return 0;
 }
