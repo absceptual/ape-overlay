@@ -20,7 +20,9 @@ auto overlay::init( const wchar_t* process ) -> void
 		if (!area.left && !area.right && !area.bottom && !area.top)
 			throw std::runtime_error( "Could not determine window size! (is it minimized?)" );
 	}
-	
+	window::t_size = { area.right - area.left, area.bottom - area.top };
+	window::process = process;
+
 	POINT position{ };
 	MapWindowPoints( window::target, HWND_DESKTOP, &position, 1 );
 	GetWindowRect( window::handle, &area );

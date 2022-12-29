@@ -26,7 +26,10 @@ namespace overlay
 		inline size_t		  size{ };
 		inline pixel          position{ };
 		inline HWND           handle{ };
+
 		inline HWND           target{ };
+		inline size_t		  t_size{ };
+		inline const wchar_t* process{ };
 	}
 	
 	auto init( const wchar_t* name ) -> void;

@@ -11,7 +11,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
 	// Overlay initalization and attachment
 	try {
-		renderer::init( L"notepad.exe" );
+		renderer::init( L"mspaint.exe" );
 	}
 	catch (std::runtime_error exception) {
 		MessageBoxA(NULL, exception.what(), NULL, MB_ABORTRETRYIGNORE);
@@ -22,9 +22,12 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 	{
 		renderer::begin( );
 
-		auto x_offset = overlay::window::position.x;
-		auto y_offset = overlay::window::position.y;
-		renderer::objects::ctx->DrawRectangle(D2D1::RectF( x_offset + 100.0f, y_offset + 100.0f, x_offset + 300.f, y_offset + 300.f ), renderer::objects::brush);
+		D2D1_POINT_2F center{ overlay::window::t_size.x / 2,  overlay::window::t_size.y / 2 };
+
+		renderer::draw_line(  )
+		renderer::draw_filled_box( center, { 50, 50 }, D2D1::ColorF( 0.f, 0.f, 0.f, 1.0f ));
+		renderer::draw_box( {0, 0 }, { 50, 50 }, D2D1::ColorF( 0.f, 0.f, 0.f, 1.0f ), false, 5.0f);
+		// renderer::draw_text( {0, 0 }, L"pussy balls!", D2D1::ColorF( 0.f, 0.f, 0.f, 1.0f ) );
 		
 		renderer::end( );
 	}
