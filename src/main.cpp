@@ -3,6 +3,10 @@
 #include "renderer/renderer.h"
 #include "util/process.h"
 
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "Dwmapi.lib")
+
 int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 {
 	// Overlay initalization and attachment
@@ -19,7 +23,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int count)
 	MSG message{ };
 	while (true)
 	{
-		render->update();
+		renderer::update(render);
 		render->begin();
 
 		render->draw_filled_box({ 0, 0 }, 50, 50, { 255, 0, 0 }, 3.0f);

@@ -1,38 +1,12 @@
 #include "renderer.h"
 
-renderer::renderer(const wchar_t* process, HINSTANCE instance) 
-{
-	try {
-		m_overlay = std::make_unique<window>(process, instance);
-		m_process = process;
-		m_instance = instance;
-	}
-	catch (std::runtime_error exception) {
-		throw exception;
-	}
-
-	if (!create_device())
-		throw std::runtime_error("Failed to create DirectX device!");
-
-	if (!create_target())
-		throw std::runtime_error("Failed to create render target!");
-
-	if (!create_shaders())
-		throw std::runtime_error("Failed to initalize render shaders!");
-
-	if (!create_buffer())
-		throw std::runtime_error("Failed to create the vertex and/or index buffers!");
-}
-
 renderer::renderer(const wchar_t* process)
 {
 	try {
 		m_overlay = std::make_unique<window>(process);
 		m_process = process;
 	}
-	catch (std::runtime_error exception) {
-		throw exception;
-	}
+	catch (std::runtime_error exception) { throw exception; }
 
 	if (!create_device())
 		throw std::runtime_error("Failed to create DirectX device!");
@@ -50,15 +24,19 @@ renderer::renderer(const wchar_t* process)
 // TODO: Add more releases	
 renderer::~renderer()
 {
+	safe_release(m_device);
+	safe_release(m_swapchain);
+	safe_release(m_ctx);
 	safe_release(m_pshader);
 	safe_release(m_vshader);
 	safe_release(m_ibuffer);
 	safe_release(m_vbuffer);
 	safe_release(m_layout);
 	safe_release(m_target);
-	safe_release(m_ctx);
-	safe_release(m_swapchain);
-	safe_release(m_device);
+	safe_release(m_projectionbuffer);
+
+	if (m_overlay)
+		m_overlay.release();
 }
 
 bool renderer::create_device()
@@ -89,9 +67,10 @@ bool renderer::create_device()
 	if (FAILED(status))
 		return false;
 
-	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, m_overlay->get_width(), m_overlay->get_height());
+	auto viewport = CD3D11_VIEWPORT(0.f, 0.f, window::width, window::height);
 	m_ctx->RSSetViewports(1, &viewport);
 
+	
 	return true;
 }
 
@@ -132,13 +111,12 @@ bool renderer::create_buffer()
 	D3D11_MAPPED_SUBRESOURCE resource;
 	m_ctx->Map(m_projectionbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
 	std::memcpy(resource.pData, &m_projection, sizeof(XMMATRIX));
- 	m_ctx->Unmap(m_projectionbuffer, 0);
-	
+	m_ctx->Unmap(m_projectionbuffer, 0);
+
 	return true;
 }
 
 // TODO: Find a faster method to get shader bytecode
-// Initalizes BasicEffect, PrimitiveBatch and our vertex/pixel shaders
 bool renderer::create_shaders()
 {
 	m_effect = std::make_unique<BasicEffect>(m_device);
@@ -165,6 +143,7 @@ bool renderer::create_shaders()
 	m_pbatch = std::make_unique<PrimitiveBatch<vertex_t>>(m_ctx);
 	m_effect->SetProjection(m_projection);
 	m_effect->SetVertexColorEnabled(true);
+
 	return true;
 }
 
@@ -178,40 +157,53 @@ auto renderer::begin() -> bool
 	m_ctx->VSSetShader(m_vshader, nullptr, NULL);
 	m_ctx->PSSetShader(m_pshader, nullptr, NULL);
 
-	// const FLOAT color[]{ 0.f, 10.f, 0.f, 0.1f };
-	// m_ctx->ClearRenderTargetView(m_target, color);
+	
 
+	// Used for determining overlay position/size
+	
 	m_pbatch->Begin();
 	return true;
 }
 
-auto renderer::end() -> void
+auto renderer::end(bool debug) -> void
 {
 	m_pbatch->End();
-	m_swapchain->Present(1, 0);
+	m_swapchain->Present(0, 0);
 }
 
-void renderer::update()
+// Updates drawing offset and rebuilds renderer if a change in screen resolution is detected
+auto renderer::update(std::unique_ptr<renderer>& render) -> void
 {
-	auto overlay = get_overlay();
-
-	auto pair = window::get_z_order(overlay->get_target());
-	auto hwnd = pair.second;
+	auto overlay = render->get_overlay();
 
 	RECT area{ };
-	GetClientRect(overlay->get_target(), &area);
-	window::width = area.right - area.left;
-	window::height = area.bottom - area.top;
-
-	// change drawing offset depending on positioning
 	POINT point{ };
+	GetWindowRect(overlay->get_hwnd(), &area);
 	MapWindowPoints(overlay->get_target(), HWND_DESKTOP, &point, 1);
-	WIDTH_OFFSET = point.x;
-	HEIGHT_OFFSET = point.y;
+
+	window::offset = { point.x, point.y };
 
 	SetWindowPos(overlay->get_target(), overlay->get_hwnd(), NULL, NULL, NULL, NULL, SWP_NOMOVE | SWP_NOSIZE);
 	if (!IsWindowVisible(overlay->get_hwnd()))
 		ShowWindow(overlay->get_hwnd(), SW_NORMAL);
+
+	auto width = area.right - area.left;
+	auto height = area.bottom - area.top;
+	if (width != window::width || height != window::height)
+	{
+		/*
+		auto process = render->m_process;
+		try {
+			render.release();
+			render = std::make_unique<renderer>(process);
+		}
+		catch (std::runtime_error exception) {
+			MessageBoxA(NULL, exception.what(), NULL, MB_ABORTRETRYIGNORE);
+			exit(0);
+		}
+		*/
+		;;
+	}
 
 }
 
@@ -221,11 +213,11 @@ void renderer::update()
 void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness)
 {
 	/// fix rotation / angle to make perfect thickness 
-	from.x += WIDTH_OFFSET;
-	to.x += WIDTH_OFFSET;
+	from.x += window::offset.x;
+	to.x += window::offset.x;
 
-	from.y += HEIGHT_OFFSET;
-	to.y += HEIGHT_OFFSET;
+	from.y += window::offset.y;
+	to.y += window::offset.y;
 
 	vertex_t q1 = vertex_t(XMFLOAT3(from.x, from.y + thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
 	vertex_t q2 = vertex_t(XMFLOAT3(from.x, from.y - thickness, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
@@ -237,8 +229,8 @@ void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thick
 
 void renderer::draw_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness)
 {
-	position.x += WIDTH_OFFSET;
-	position.y += HEIGHT_OFFSET;
+	position.x += window::offset.x;
+	position.y += window::offset.y;
 
 	vertex_t q1 = vertex_t(XMFLOAT3(position.x, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
 	vertex_t q2 = vertex_t(XMFLOAT3(position.x + width, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
@@ -252,8 +244,8 @@ void renderer::draw_box(XMFLOAT2 position, float width, float height, XMFLOAT3 c
 
 void renderer::draw_filled_box(XMFLOAT2 position, float width, float height, XMFLOAT3 color, float thickness)
 {
-	position.x += WIDTH_OFFSET;
-	position.y += HEIGHT_OFFSET;
+	position.x += window::offset.x;
+	position.y += window::offset.y;
 
 	vertex_t q1 = vertex_t(XMFLOAT3(position.x, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
 	vertex_t q2 = vertex_t(XMFLOAT3(position.x + width, position.y, 0.f), XMFLOAT4(color.x, color.y, color.z, 1));
