@@ -191,56 +191,32 @@ auto renderer::end() -> void
 	m_swapchain->Present(1, 0);
 }
 
-// Called when window is resized in window::handler
-void renderer::update(std::unique_ptr<renderer>& render)
+void renderer::update()
 {
-	// Timing check used to prevent exceptions from creating/destroying classes too frequently
-	static auto start = std::chrono::high_resolution_clock::now();
-	auto elapsed = std::chrono::high_resolution_clock::now() - start;
-	double seconds = std::chrono::duration<double>(elapsed).count();
+	auto overlay = get_overlay();
 
-	std::unique_ptr<window>& overlay = render->get_overlay();
+	auto pair = window::get_z_order(overlay->get_target());
+	auto hwnd = pair.second;
 
-	RECT size{ };
-	GetClientRect(overlay->get_target(), &size);
+	RECT area{ };
+	GetClientRect(overlay->get_target(), &area);
+	window::width = area.right - area.left;
+	window::height = area.bottom - area.top;
 
-	POINT position{ };
-	MapWindowPoints(overlay->get_target(), HWND_DESKTOP, &position, 1);
-	position.x -= WIDTH_OFFSET;
-	position.y -= HEIGHT_OFFSET;
+	// change drawing offset depending on positioning
+	POINT point{ };
+	MapWindowPoints(overlay->get_target(), HWND_DESKTOP, &point, 1);
+	WIDTH_OFFSET = point.x;
+	HEIGHT_OFFSET = point.y;
 
-	auto t_position = overlay->get_position();
-	if (t_position.x != position.x || t_position.y != position.y)
-		SetWindowPos(overlay->get_hwnd(), NULL, position.x, position.y, 0, 0, SWP_NOSIZE);
+	SetWindowPos(overlay->get_target(), overlay->get_hwnd(), NULL, NULL, NULL, NULL, SWP_NOMOVE | SWP_NOSIZE);
+	if (!IsWindowVisible(overlay->get_hwnd()))
+		ShowWindow(overlay->get_hwnd(), SW_NORMAL);
 
-	// Check for changes in width/height every half a second (could be better but lazy)
-	int width = size.right - size.left, height = size.bottom - size.top;
-	if ((width != overlay->get_width() || height != overlay->get_height()) && seconds >= 1.0f)
-	{
-		start = std::chrono::high_resolution_clock::now();
-		auto process = render->m_process;
-		auto instance = render->m_instance;
-		DestroyWindow(overlay->get_hwnd());
-		render.release();
-
-		render = std::make_unique<renderer>(process, instance);
-	}
 }
 
 // Getters & drawing functions
-ID3D11Device* renderer::get_device() 
-{ 
-	return m_device; 
-}
-ID3D11DeviceContext* renderer::get_context() 
-{ 
-	return m_ctx; 
-}
 
-std::unique_ptr<window>& renderer::get_overlay()
-{
-	return m_overlay;
-}
 
 void renderer::draw_line(XMFLOAT2 from, XMFLOAT2 to, XMFLOAT3 color, float thickness)
 {

@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 
+
 // Windows related includes
 #include <Windows.h>
 
@@ -20,6 +21,9 @@
 #include <VertexTypes.h>
 
 #include "../window/window.h"
+
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 
 using namespace DirectX;
 
@@ -74,13 +78,13 @@ public:
 	bool create_buffer();
 	bool create_shaders();
 
-	static void update(std::unique_ptr<renderer>& render);
+	void update();
 	auto begin() -> bool;
 	auto end() -> void;
 
-	ID3D11Device* get_device();
-	ID3D11DeviceContext* get_context();
-	std::unique_ptr<window>& get_overlay();
+	ID3D11Device* get_device() { return m_device; }
+	ID3D11DeviceContext* get_context() { return m_ctx; }
+	window* get_overlay() { return m_overlay.get(); }
 
 	template <class T>
 	static void safe_release(T object) requires Releasable<T>;

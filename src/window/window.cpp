@@ -1,13 +1,16 @@
 #include "window.h"
 
 
+int window::width = 0;
+int window::height = 0;
+window::pixel window::position = { 0 };
 
 window::window(const wchar_t* process, HINSTANCE instance)
 {
 
 	WNDCLASS wndclass{ };
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
-	wndclass.lpfnWndProc = window::procedure;
+	// wndclass.lpfnWndProc = window::procedure;
 	wndclass.lpszClassName = L"ape!";
 	wndclass.hInstance = instance;
 	RegisterClass(&wndclass);
@@ -59,6 +62,8 @@ window::window(const wchar_t* process, HINSTANCE instance)
 	}
 	
 	// Used to make our overlay visible
+	
+
 	SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
 	{
 		RECT client_area{ };
@@ -90,7 +95,7 @@ window::window(const wchar_t* process, HINSTANCE instance)
 window::window(const wchar_t* process)
 {
 	// Overlay has a class named CEF-OSC-WIDGET with the attributes we need
-	m_handle = FindWindow(L"CEF-OSC-WIDGET", NULL);
+	m_handle = FindWindow(L"CEF-OSC-WIDGET", L"NVIDIA GeForce Overlay");
 	if (!m_handle)
 		throw std::runtime_error("Failed to find NVIDIA Share overlay (is it running?)");
 
@@ -112,6 +117,7 @@ window::window(const wchar_t* process)
 		}
 	}
 
+	
 	{	
 		POINT position{ };
 		MapWindowPoints(m_target, HWND_DESKTOP, &position, 1);
@@ -129,40 +135,59 @@ window::window(const wchar_t* process)
 		ClientToScreen(m_handle, &diff);
 
 		m_position = { window_area.left + (diff.x - window_area.left), window_area.top + (diff.y - window_area.top), };
-		
+		WIDTH_OFFSET = position.x;
+		HEIGHT_OFFSET = position.y;
+
 		// MSDN states that negative margin values create a "sheet of glass" effect (no window border/solid surface)
+		SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+
 		MARGINS margins = { -1 };
 		DwmExtendFrameIntoClientArea(m_handle, &margins);
 
-		SetLayeredWindowAttributes(m_handle, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
 	}
-
 }
 
+std::pair<int, HWND> window::get_z_order(HWND hwnd)
+{
+	int z = 0;
+	HWND target = NULL;
+	for (target = GetTopWindow(NULL); target != hwnd; target = GetNextWindow(target, GW_HWNDNEXT))
+		++z;
+
+	return std::make_pair(z, target);
+}
 
 // TODO: Setup proper window manager
-window::handler_t window::procedure(HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
+window::handler_t window::hk_procedure(int code, WPARAM wparam, LPARAM lparam)
 {
-	switch (message)
+	auto proc_data = reinterpret_cast<CWPSTRUCT*>(lparam);
+
+	auto msg = proc_data->message;
+	switch (msg)
 	{
-	case WM_DESTROY:
-	case WM_CLOSE:
-		PostQuitMessage(0x0);
-		return 0;
-	default:
-		return DefWindowProc(handle, message, wparam, lparam);
+	case WM_WINDOWPOSCHANGING:
+		{
+			auto data = reinterpret_cast<WINDOWPOS*>(proc_data->lParam);
+			window::width = data->cx;
+			window::height = data->cy;
+			window::position = { data->x, data->y };
+			// window::top_window = data->hwndInsertAfter;
+		}
 	}
+	return CallNextHookEx(NULL, code, wparam, lparam);
 }
 
-bool window::handler(window& window, MSG& message)
+/*
+bool window::handler(window* window, MSG& message)
 {
-	if (PeekMessage(&message, window.get_hwnd(), NULL, NULL, PM_REMOVE))
+	if (PeekMessage(&message, window->get_target(), NULL, NULL, PM_REMOVE))
 	{
 		TranslateMessage(&message);
 		DispatchMessage(&message);
 	}
-	return message.message == WM_QUIT;
+	return !(message.message == WM_QUIT);
 }
+*/
 
 bool window::attach(const wchar_t* process)
 {
