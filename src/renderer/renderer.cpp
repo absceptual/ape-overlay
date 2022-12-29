@@ -157,10 +157,9 @@ auto renderer::begin() -> bool
 	m_ctx->VSSetShader(m_vshader, nullptr, NULL);
 	m_ctx->PSSetShader(m_pshader, nullptr, NULL);
 
-	
+	float color[4]{ 0.f, 0.f, 0.f, 0.f };
+	m_ctx->ClearRenderTargetView(m_target, color);
 
-	// Used for determining overlay position/size
-	
 	m_pbatch->Begin();
 	return true;
 }
